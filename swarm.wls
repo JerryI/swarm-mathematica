@@ -102,14 +102,16 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                             "initialising",
 
                                 (*init all*)
-                                With[{},
+                                
+                                With[{def = $tasks[i]["init"]},
                                     If[!TrueQ[# == "extra"],
-                                        Do[
+                                        (*Do[
                                             With[{name = Extract[m[[1]], 1, Unevaluated], val = m[[2]]},
                                                 JTPSend[group["kernel"], With[{}, Clear[name]; Set[name, val]; Print["✔   initialised!"];]];
                                             ]
-                                        , {m, $tasks[i]["init"]}];
-                                    ]
+                                        , {m, $tasks[i]["init"]}];*)
+                                        JTPSend[group["kernel"], Language`ExtendedFullDefinition[] = def];
+                                    ];
 
                                 ];
 
@@ -126,6 +128,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
 
                                         "CoarsestGrained",
                                         (*first method*)
+                                        
                                         JTPSend[group["kernel"],
                                             Module[{},
                                                 StringTemplate["⏳   task `` (group ``) added from server"][taskname, groupid]//Print;
@@ -136,6 +139,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                     "action":>                              
                                                             With[{result = exp@@ # & /@ piece},
                                                                 StringTemplate["✔   task `` (group ``) has finished"][taskname, groupid]//Print;
+                                                               
                                                                 JTPClientSend[swarm, With[{},
                                                                     $tasks[taskid]["groups"][groupid] = Append[$tasks[taskid]["groups"][groupid], {"status"->"finished", "result"->result}];
 
@@ -167,6 +171,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                         "action":>                              
                                                                 With[{result = exp@@ pie},
                                                                     StringTemplate["✔   first piece task `` (group ``) has finished"][taskname, groupid]//Print;
+                                                                   
                                                                     JTPClientSend[swarm, With[{},
                                                                         $tasks[taskid]["groups"][groupid] = Append[$tasks[taskid]["groups"][groupid], {"result"->{result}}];
                                                                         If[!NullQ[$tasks[taskid]["onchange"]],  
@@ -181,7 +186,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                 ]
                                             ];
                                         ];
-
+                                       
                                         Do[
                                             With[{pie = piece[[i]]},
                                                 JTPSend[group["kernel"],
@@ -194,6 +199,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                             "action":>                              
                                                                     With[{result = exp@@ pie},
                                                                         StringTemplate["✔   piece task `` (group ``) has finished"][taskname, groupid]//Print;
+                                                                        
                                                                         JTPClientSend[swarm, With[{partial = $tasks[taskid]["groups"][groupid]["result"]},
                                                                             $tasks[taskid]["groups"][groupid] = Append[$tasks[taskid]["groups"][groupid], {"result"->Append[partial, result]}];
 
@@ -211,18 +217,20 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                     ]
                                                 ];
                                             ];
+                                        
                                         , {i, 2, Length[piece]-1}];
-
+                                       
                                         With[{pie = piece//Last},
                                             JTPSend[group["kernel"],
                                                 Module[{},
                                                     StringTemplate["⏳   last piece task `` (group ``) added from server"][taskname, groupid]//Print;
                                                     cronAdd@<|
-                                                        "period" -> Quantity[0.1,"Seconds"],
+                                                        "period" -> Quantity[0.5,"Seconds"],
                                                         "onetime" -> True,
                                                         "action":>                              
                                                                 With[{result = exp@@ pie},
                                                                     StringTemplate["✔   last piece task `` (group ``) has finished"][taskname, groupid]//Print;
+                                                                    
                                                                     JTPClientSend[swarm, With[{partial = $tasks[taskid]["groups"][groupid]["result"]},
                                                                         $tasks[taskid]["groups"][groupid] = Append[$tasks[taskid]["groups"][groupid], {"status"->"finished", "result"->Append[partial, result]}];
                                                                         If[!NullQ[$tasks[taskid]["onchange"]],  
@@ -307,7 +315,6 @@ HowIsIt[id_]:=Module[{},
 (*for kernels*)
 
 RegisterMe[name_, desc_]:=Module[{},
-    If[name == "At Riot A", Print["no!"]; Return[]];
     $kernels[socket] = <|"name"->name, "desc"->desc, "date"->Now|>;
     StringTemplate["Welcome, ``!"][name]//Print;
     
@@ -336,13 +343,13 @@ cronAdd@<|
 |>;
 
 cronAdd@<|
-
-    "period" -> Quantity[1,"Minutes"],
-    "action":>(Print/@(jtp["log"]["Elements"]))
+    "period" -> Quantity[3,"Minutes"],
+    "action":>While[!jtp["log"]["EmptyQ"],(jtp["log"]["Pop"] >>> "server.log")]
 |>;
 
+
 cronAdd@<|
-    "period" -> Quantity[15,"Seconds"],
+    "period" -> Quantity[20,"Seconds"],
     "action":>With[{},
                 Do[
                     With[{uid = CreateUUID[]},
@@ -362,12 +369,11 @@ cronAdd@<|
                     If[$pongs[i]["status"] == "ok",
                         $pongs[i] = .;
                     ,
-                        If[Now - $pongs[i]["date"] > Quantity[6, "Seconds"],
+                        If[Now - $pongs[i]["date"] > Quantity[20, "Seconds"],
                             
                             logWrite["😢    kernel "<>$kernels[$pongs[i]["kernel"]]["name"]<>" is dead..."];
                             $kernels[$pongs[i]["kernel"]]=.;
-                            streams[$pongs[i]["kernel"]]=.;
-                            Close[SocketObject[$pongs[i]["kernel"]]];
+                            JTPServerDrop[jtp, $pongs[i]["kernel"]];
                             $pongs[i] = .;
                         ];
                     ];
