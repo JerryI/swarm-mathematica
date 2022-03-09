@@ -110,7 +110,12 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                                                 JTPSend[group["kernel"], With[{}, Clear[name]; Set[name, val]; Print["✔   initialised!"];]];
                                             ]
                                         , {m, $tasks[i]["init"]}];*)
-                                        JTPSend[group["kernel"], Language`ExtendedFullDefinition[] = def];
+                                        JTPSend[group["kernel"], cronAdd@<|
+                                                        "period" -> Quantity[0.2,"Seconds"],
+                                                        "onetime" -> True,
+                                                        "action":> (Language`ExtendedFullDefinition[] = def)
+                                            |>
+                                        ];
                                     ];
 
                                 ];
@@ -297,8 +302,7 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
                 StringTemplate["👍  The task `` was finished!"][$tasks[i]["name"]]//Print;
                 $tasks[i]["status"] = "finished";
                 $tasks[i]["finished at"] = Now;
-                $tasks[i]["result"] = Join@@($tasks[i]["groups"][#]["result"]&/@Keys[$tasks[i]["groups"]]);
-                With[{id = i, results = $tasks[i]["result"], time = $tasks[i]["finished at"] - $tasks[i]["started at"]},
+                With[{id = i, results = Join@@($tasks[i]["groups"][#]["result"]&/@Keys[$tasks[i]["groups"]]), time = $tasks[i]["finished at"] - $tasks[i]["started at"]},
                     JTPSend[$tasks[i]["author"], TaskFinished[id, <|"result"->results, "time"->time|>]];
                 ];
                 
@@ -306,11 +310,6 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
         ];
     , {i, Keys[$tasks]}];
 ];
-
-HowIsIt[id_]:=Module[{},
-    If[TrueQ[$tasks[id]["status"] == "finished"], $tasks[id]["result"] , $tasks[id]["status"]]
-];
-
 
 (*for kernels*)
 
