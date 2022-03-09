@@ -4333,3 +4333,20 @@ Tue 1 Mar 2022 19:12:52
 🏓 from .
 🏓 from .
 🏓 from .
+<INITIALIZATION STARTS>
+Autolaunch
+{swarm.wls, web.wls}
+
+message::shdw: Symbol message appears in multiple contexts {JTP`, Global`}; definitions in context JTP` may shadow or be shadowed by other definitions.
+
+x::shdw: Symbol x appears in multiple contexts {JTP`, Global`}; definitions in context JTP` may shadow or be shadowed by other definitions.
+webserver:: init
+
+FrontEndObject::notavail: A front end is not available; certain operations require a front end.
+(::Tiny Web Server:: Null)<>
+::VOut[0][version]::
+
+StringJoin::string: String expected at position 1 in (::Tiny Web Server:: Null)<>.
+
+cheking for updates...
+Cron started
