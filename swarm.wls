@@ -20,12 +20,13 @@ AddTask[task_, OptionsPattern[]]:=Module[{id = CreateUUID[]},
     $tasks[id]["started at"] = Now;
     $tasks[id]["author"]   = socket;
     $tasks[id]["sendto"]   = socket;
+    $tasks[id]["progress"] = 0;
     $tasks[id]["method"] = OptionValue[Method];
     $tasks[id]["webvisor"] = OptionValue[WebVisor];
     $tasks[id]["onchange"] = OptionValue[OnChange];
     $tasks[id]["status"]   = "nondistributed";
 
-    id
+    TaskObject[id]
 ];
 
 Options[AddTask] = {WebVisor -> Null, OnChange -> Null, Method -> "CoarsestGrained"}
@@ -297,6 +298,10 @@ CheckTasks[]:=Module[{kernels = Keys[$kernels], torecover={}},
               ];
 
               StringTemplate["🛠    We have `` working, `` waiting and `` has finished for task ``."][working,waiting,integrity,$tasks[i]["name"]]//Print;
+              $tasks[i]["groups working"] = working;
+              $tasks[i]["groups finished"] = integrity;
+              $tasks[i]["groups waiting"] = waiting;
+
               $tasks[i]["progress"] = integrity/Length[$tasks[i]["groups"]];
               If[integrity == Length[$tasks[i]["groups"]],
                 StringTemplate["👍  The task `` was finished!"][$tasks[i]["name"]]//Print;
@@ -332,7 +337,7 @@ Pong[id_]:=Module[{},
 AliveQ:=If[MemberQ[$kernels//Keys, socket], Ja, FuckOffMan];
 
 cronAdd@<|
-    "period" -> Quantity[5,"Seconds"],
+    "period" -> Quantity[1,"Seconds"],
     "action":>CheckTasks[]
 |>;
 
@@ -348,7 +353,7 @@ cronAdd@<|
 
 
 cronAdd@<|
-    "period" -> Quantity[20,"Seconds"],
+    "period" -> Quantity[23,"Seconds"],
     "action":>With[{},
                 Do[
                     With[{uid = CreateUUID[]},
